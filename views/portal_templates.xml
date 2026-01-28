@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Portal Home Link -->
+    <template id="portal_my_home_flights" name="Flights" inherit_id="portal.portal_my_home" priority="30">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="after">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="icon" t-value="'fa fa-plane'"/>
+                <t t-set="title">My Flights</t>
+                <t t-set="text">View and manage your flights</t>
+                <t t-set="url" t-value="'/my/flights'"/>
+                <t t-set="placeholder_count" t-value="'flight_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Flights List Page -->
+    <template id="portal_my_flights" name="My Flights">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <div class="o_flight_portal container py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fa fa-plane me-2"/>My Flights</h2>
+                    <div class="d-flex gap-2">
+                        <a href="/my/flights/create" class="btn btn-primary">
+                            <i class="fa fa-plus"/> Add Flight
+                        </a>
+                        <button id="syncBtn" class="btn btn-success">
+                            <i class="fa fa-refresh"/> Sync from API
+                        </button>
+                        <button class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#apiModal">
+                            <i class="fa fa-key"/> API Key
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Flights Table -->
+                <t t-if="flights">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Flight #</th>
+                                    <th>Airline</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Departure</th>
+                                    <th>Price</th>
+                                    <th>Status</th>
+                                    <th>Source</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="flights" t-as="f">
+                                    <tr>
+                                        <td><strong t-esc="f.flight_number"/></td>
+                                        <td t-esc="f.airline_name or '-'"/>
+                                        <td t-esc="f.origin or '-'"/>
+                                        <td t-esc="f.destination or '-'"/>
+                                        <td>
+                                            <t t-if="f.departure_time">
+                                                <t t-esc="f.departure_time" t-options="{'widget': 'datetime', 'format': 'MM/dd HH:mm'}"/>
+                                            </t>
+                                            <t t-else="">-</t>
+                                        </td>
+                                        <td>$<t t-esc="'%.2f' % (f.price or 0)"/></td>
+                                        <td>
+                                            <span t-attf-class="badge bg-#{f.status == 'active' and 'success' or 'danger'}">
+                                                <t t-esc="f.status"/>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span t-if="f.is_from_api" class="badge bg-info">API</span>
+                                            <span t-else="" class="badge bg-secondary">Local</span>
+                                        </td>
+                                        <td>
+                                            <a t-attf-href="/my/flights/#{f.id}/edit" class="btn btn-sm btn-outline-primary">
+                                                <i class="fa fa-edit"/>
+                                            </a>
+                                            <form t-attf-action="/my/flights/#{f.id}/delete" method="post" class="d-inline">
+                                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete?')">
+                                                    <i class="fa fa-trash"/>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+                <t t-else="">
+                    <div class="alert alert-info text-center">
+                        <i class="fa fa-plane fa-2x mb-2"/><br/>
+                        No flights yet. <a href="/my/flights/create">Add your first flight</a>
+                    </div>
+                </t>
+
+                <!-- API Key Modal -->
+                <div class="modal fade" id="apiModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">API Key</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"/>
+                            </div>
+                            <div class="modal-body">
+                                <input type="text" id="apiKey" class="form-control" placeholder="Enter AviationStack API key"/>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" id="saveKey">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Flight Detail Page -->
+    <template id="portal_flight_detail" name="Flight Detail">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fa fa-plane me-2"/>Flight Details</h2>
+                    <div class="d-flex gap-2">
+                        <a t-attf-href="/my/flights/#{flight.id}/edit" class="btn btn-primary">
+                            <i class="fa fa-edit"/> Edit
+                        </a>
+                        <a href="/my/flights" class="btn btn-secondary">
+                            <i class="fa fa-arrow-left"/> Back
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="mb-0">
+                            <strong t-esc="flight.flight_number"/>
+                            <span t-if="flight.is_from_api" class="badge bg-info ms-2">API</span>
+                            <span t-else="" class="badge bg-secondary ms-2">Local</span>
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Airline:</strong> <t t-esc="flight.airline_name or '-'"/></p>
+                                <p><strong>Origin:</strong> <t t-esc="flight.origin or '-'"/>
+                                    <t t-if="flight.departure_iata">(<t t-esc="flight.departure_iata"/>)</t>
+                                </p>
+                                <p><strong>Destination:</strong> <t t-esc="flight.destination or '-'"/>
+                                    <t t-if="flight.arrival_iata">(<t t-esc="flight.arrival_iata"/>)</t>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Departure:</strong>
+                                    <t t-if="flight.departure_time">
+                                        <t t-esc="flight.departure_time" t-options="{'widget': 'datetime'}"/>
+                                    </t>
+                                    <t t-else="">-</t>
+                                </p>
+                                <p><strong>Arrival:</strong>
+                                    <t t-if="flight.arrival_time">
+                                        <t t-esc="flight.arrival_time" t-options="{'widget': 'datetime'}"/>
+                                    </t>
+                                    <t t-else="">-</t>
+                                </p>
+                                <p><strong>Price:</strong> $<t t-esc="'%.2f' % (flight.price or 0)"/></p>
+                                <p><strong>Status:</strong>
+                                    <span t-attf-class="badge bg-#{flight.status == 'active' and 'success' or 'danger'}">
+                                        <t t-esc="flight.status"/>
+                                    </span>
+                                </p>
+                                <t t-if="flight.flight_status_api">
+                                    <p><strong>API Status:</strong> <t t-esc="flight.flight_status_api"/></p>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Create Flight Form -->
+    <template id="portal_flight_create" name="Create Flight">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <h2><i class="fa fa-plus me-2"/>New Flight</h2>
+
+                <form action="/my/flights/create" method="post" class="mt-4">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Flight Number *</label>
+                            <input type="text" name="flight_number" class="form-control" required=""/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Airline</label>
+                            <input type="text" name="airline_name" class="form-control"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Origin</label>
+                            <input type="text" name="origin" class="form-control"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Destination</label>
+                            <input type="text" name="destination" class="form-control"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Departure</label>
+                            <input type="datetime-local" name="departure_time" class="form-control"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Arrival</label>
+                            <input type="datetime-local" name="arrival_time" class="form-control"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" name="price" class="form-control" step="0.01"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="active" selected="">Active</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-save"/> Save
+                        </button>
+                        <a href="/my/flights" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </t>
+    </template>
+
+    <!-- Edit Flight Form -->
+    <template id="portal_flight_edit" name="Edit Flight">
+        <t t-call="portal.portal_layout">
+            <div class="container py-4">
+                <h2><i class="fa fa-edit me-2"/>Edit Flight</h2>
+
+                <form t-attf-action="/my/flights/#{flight.id}/edit" method="post" class="mt-4">
+                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Flight Number</label>
+                            <input type="text" name="flight_number" class="form-control"
+                                   t-att-value="flight.flight_number" readonly="readonly"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Airline</label>
+                            <input type="text" name="airline_name" class="form-control"
+                                   t-att-value="flight.airline_name or ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Origin</label>
+                            <input type="text" name="origin" class="form-control"
+                                   t-att-value="flight.origin or ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Destination</label>
+                            <input type="text" name="destination" class="form-control"
+                                   t-att-value="flight.destination or ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Departure</label>
+                            <input type="datetime-local" name="departure_time" class="form-control"
+                                   t-att-value="flight.departure_time.strftime('%Y-%m-%dT%H:%M') if flight.departure_time else ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Arrival</label>
+                            <input type="datetime-local" name="arrival_time" class="form-control"
+                                   t-att-value="flight.arrival_time.strftime('%Y-%m-%dT%H:%M') if flight.arrival_time else ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Price</label>
+                            <input type="number" name="price" class="form-control" step="0.01"
+                                   t-att-value="flight.price or ''"/>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="active" t-att-selected="flight.status == 'active'">Active</option>
+                                <option value="cancelled" t-att-selected="flight.status == 'cancelled'">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-save"/> Save
+                        </button>
+                        <a t-attf-href="/my/flights/#{flight.id}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </t>
+    </template>
+</odoo>
