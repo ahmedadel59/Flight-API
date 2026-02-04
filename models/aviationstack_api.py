@@ -78,26 +78,14 @@ class AviationStackAPI(models.AbstractModel):
         current_user_id = self.env.context.get(
             'current_user_id') or self.env.user.id
 
-    # 1️⃣ Fetch realtime flights (today)
         if flight_type in ('realtime', 'both'):
             realtime_data = self.fetch_real_time_flights(limit=20)
         if 'error' in realtime_data:
             return {'success': False, 'message': realtime_data['error']}
 
-    # 2️⃣ Fetch scheduled flights (upcoming)
-        schedule_data = self.fetch_flight_schedules(limit=20)
-        if 'error' in schedule_data:
-            return {'success': False, 'message': schedule_data['error']}
-
-    # 3️⃣ Merge both datasets
-        flights_data = (
-            realtime_data.get('data', []) +
-            schedule_data.get('data', [])
-        )
-
         synced_count = 0
 
-        for flight in flights_data:
+        for flight in realtime_data.get('data', []):
             flight_number = (
                 flight.get('flight', {}).get('iata')
                 or flight.get('flight', {}).get('number')

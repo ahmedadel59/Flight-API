@@ -2,14 +2,21 @@
 <odoo>
     <!-- Portal Home Link -->
     <template id="portal_my_home_flights" name="Flights" inherit_id="portal.portal_my_home" priority="30">
-        <xpath expr="//div[hasclass('o_portal_docs')]" position="after">
+        <xpath expr="//div[@id='portal_client_category']" position="inside">
             <t t-call="portal.portal_docs_entry">
-                <t t-set="icon" t-value="'fa fa-plane'"/>
                 <t t-set="title">My Flights</t>
                 <t t-set="text">View and manage your flights</t>
                 <t t-set="url" t-value="'/my/flights'"/>
                 <t t-set="placeholder_count" t-value="'flight_count'"/>
+                <t t-set="show_count" t-value="True"/>
             </t>
+        </xpath>
+    </template>
+
+    <!-- Enable the client category for flights -->
+    <template id="portal_my_home_flights_category" inherit_id="portal.portal_my_home" priority="29">
+        <xpath expr="//div[@id='portal_client_category']" position="attributes">
+            <attribute name="t-if">True</attribute>
         </xpath>
     </template>
 

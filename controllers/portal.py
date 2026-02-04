@@ -12,10 +12,9 @@ class FlightPortal(CustomerPortal):
 
     def _prepare_home_portal_values(self, counters):
         values = super()._prepare_home_portal_values(counters)
-        domain = self._get_flight_domain()
-        flight_count = request.env['flight.schedule'].sudo(
-        ).search_count(domain)
-        values['flight_count'] = flight_count
+        if 'flight_count' in counters:
+            domain = self._get_flight_domain()
+            values['flight_count'] = request.env['flight.schedule'].sudo().search_count(domain)
         return values
 
     def _get_flight_domain(self):
